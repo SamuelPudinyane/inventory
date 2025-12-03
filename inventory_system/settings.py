@@ -116,32 +116,30 @@ WSGI_APPLICATION = 'inventory_system.wsgi.application'
 #     }
 # }
 
+# Previous MSSQL config (commented out)
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'mssql',
+#         'NAME': 'inventory',
+#         'USER': '',  # Leave blank if using Windows Authentication
+#         'PASSWORD': '',  # Leave blank if using Windows Authentication
+#         'HOST': 'APB-JBS02-113L\\SQLEXPRESS',  # Escape backslash
+#         'PORT': '',  # SQL Server default port is usually fine to omit
+#         'OPTIONS': {
+#             'driver': 'ODBC Driver 17 for SQL Server',  # Check your actual installed driver
+#             'trusted_connection': 'yes',  # Enables Windows Auth
+#         },
+#     }
+# }
+
 DATABASES = {
-    'default': {
-        'ENGINE': 'mssql',
-        'NAME': 'inventory',
-        'USER': '',  # Leave blank if using Windows Authentication
-        'PASSWORD': '',  # Leave blank if using Windows Authentication
-        'HOST': 'APB-JBS02-113L\\SQLEXPRESS',  # Escape backslash
-        'PORT': '',  # SQL Server default port is usually fine to omit
-        'OPTIONS': {
-            'driver': 'ODBC Driver 17 for SQL Server',  # Check your actual installed driver
-            'trusted_connection': 'yes',  # Enables Windows Auth
-        },
-    }
+    'default': dj_database_url.config(
+        default='postgresql://inventory_8fic_user:RU5A8BEhWkcXCsw8MC2Ic99myK2hDeFd@dpg-d4oclcer433s73cmvrc0-a.oregon-postgres.render.com/inventory_8fic',
+        conn_max_age=600
+    )
 }
 
 
-
-
-
-#dj_database_url.config(
-        #default='postgres://user:password@localhost:5432/inventory_system',
-        #conn_max_age=600
-    #)
-##DATABASES = {
-    ##'default': dj_database_url.config(default='postgres://user:password@Malva:5432/database_name')
-#}
 
 
 

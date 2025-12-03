@@ -52,12 +52,12 @@ LOW_QUANTITY = getattr(settings, 'LOW_QUANTITY', 5)
 get_connection()
 def index(request):
     user_param = request.GET.get('user')
-    print(user_param)
+    
     # user=request.session['user']
     # if 'user_id' in user:
         # logged_user=user
     user_id = user_param
-    api_endpoint = 'http://127.0.0.1:5000/stemuserprofiles'
+    api_endpoint = 'https://society-ed02.onrender.com/stemuserprofiles'
     url = f"{api_endpoint}/{user_id}"
    
     try:
@@ -852,7 +852,7 @@ def logout_view(request):
     request.session.flush()  # Clear session data
     messages.success(request, "You have been logged out.")
     from django.http import HttpResponseRedirect
-    return HttpResponseRedirect('http://127.0.0.1:5000')
+    return HttpResponseRedirect('https://society-ed02.onrender.com')
 
 
 
