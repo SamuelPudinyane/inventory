@@ -1,0 +1,385 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Analytics Tracker</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.12.0-2/css/all.min.css" />
+  <link rel="shortcut icon" type="image/ico" href="{% static 'images/favicon.ico' %}"/>
+  <style>
+    body { background: #f4f6f8; }
+    .chart-card { background: #fff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,.08); padding: 16px; margin-bottom: 16px; }
+    .chart-title { font-size: 14px; font-weight: 600; margin-bottom: 8px; }
+    .heatmap { display: grid; grid-template-columns: 80px repeat(24, 1fr); gap: 2px; }
+    .heatmap .label { font-size: 12px; padding: 4px; background: #fff; }
+    .heatmap .cell { height: 18px; background: #e9ecef; }
+    .chart-actions { gap: 6px; }
+    .chart-actions .btn { padding: 2px 8px; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <nav class="navbar navbar-expand-lg navbar-success bg-success">
+    <div class="container-fluid py-3">
+      <a class="navbar-brand fs-1 text-white" href="{% url 'index' %}"><img src="{% static 'images/logo.jpeg' %}" alt="FarmFresh Logo" width="75" class="d-inline-block align-text-top">FarmFresh</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarSupportedContent">
+        <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+          <li class="nav-item"><a class="nav-link active text-white" href="{% url 'index' %}">Home</a></li>
+          <li class="nav-item"><a class="nav-link active text-white" href="{% url 'users-profile' %}">Profile</a></li>
+          <li class="nav-item"><a class="nav-link active text-white" href="{% url 'analytics_tracker' %}">Analytics Tracker</a></li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container-fluid py-4">
+    <h3 class="mb-3">Analytics Tracker</h3>
+    <div class="row">
+      <div class="col-12 col-lg-8">
+        <div class="chart-card">
+          <div class="d-flex justify-content-between align-items-center">
+            <div class="chart-title mb-0">Events Over Time (last 30 days)</div>
+            <div class="chart-actions d-flex">
+              <button class="btn btn-outline-secondary" onclick="downloadPNGFromCanvas('eventsOverTime','events-over-time.png')">Download PNG</button>
+              <button class="btn btn-outline-secondary" onclick="exportCSV(eventsOverTimeCSV(), 'events-over-time.csv')">Export CSV</button>
+            </div>
+          </div>
+          <canvas id="eventsOverTime" height="90"></canvas>
+        </div>
+      </div>
+      <div class="col-12 col-lg-4">
+        <div class="chart-card">
+          <div class="d-flex justify-content-between align-items-center">
+            <div class="chart-title mb-0">Events by Type</div>
+            <div class="chart-actions d-flex">
+              <button class="btn btn-outline-secondary" onclick="downloadPNGFromCanvas('eventsByType','events-by-type.png')">Download PNG</button>
+              <button class="btn btn-outline-secondary" onclick="exportCSV(eventsByTypeCSV(), 'events-by-type.csv')">Export CSV</button>
+            </div>
+          </div>
+          <canvas id="eventsByType" height="200"></canvas>
+        </div>
+      </div>
+      <div class="col-12 col-lg-6">
+        <div class="chart-card">
+          <div class="d-flex justify-content-between align-items-center">
+            <div class="chart-title mb-0">Top Page Views</div>
+            <div class="chart-actions d-flex">
+              <button class="btn btn-outline-secondary" onclick="downloadPNGFromCanvas('topPageViews','top-page-views.png')">Download PNG</button>
+              <button class="btn btn-outline-secondary" onclick="exportCSV(topPageViewsCSV(), 'top-page-views.csv')">Export CSV</button>
+            </div>
+          </div>
+          <canvas id="topPageViews" height="180"></canvas>
+        </div>
+      </div>
+      <div class="col-12 col-lg-6">
+        <div class="chart-card">
+          <div class="d-flex justify-content-between align-items-center">
+            <div class="chart-title mb-0">Clicks per Page</div>
+            <div class="chart-actions d-flex">
+              <button class="btn btn-outline-secondary" onclick="downloadPNGFromCanvas('clicksPerPage','clicks-per-page.png')">Download PNG</button>
+              <button class="btn btn-outline-secondary" onclick="exportCSV(clicksPerPageCSV(), 'clicks-per-page.csv')">Export CSV</button>
+            </div>
+          </div>
+          <canvas id="clicksPerPage" height="180"></canvas>
+        </div>
+      </div>
+      <div class="col-12 col-lg-6">
+        <div class="chart-card">
+          <div class="d-flex justify-content-between align-items-center">
+            <div class="chart-title mb-0">Top Elements Clicked</div>
+            <div class="chart-actions d-flex">
+              <button class="btn btn-outline-secondary" onclick="downloadPNGFromCanvas('topElements','top-elements-clicked.png')">Download PNG</button>
+              <button class="btn btn-outline-secondary" onclick="exportCSV(topElementsCSV(), 'top-elements-clicked.csv')">Export CSV</button>
+            </div>
+          </div>
+          <canvas id="topElements" height="180"></canvas>
+        </div>
+      </div>
+      <div class="col-12 col-lg-6">
+        <div class="chart-card">
+          <div class="d-flex justify-content-between align-items-center">
+            <div class="chart-title mb-0">Avg View Duration (last 30 days)</div>
+            <div class="chart-actions d-flex">
+              <button class="btn btn-outline-secondary" onclick="downloadPNGFromCanvas('avgViewDuration','avg-view-duration.png')">Download PNG</button>
+              <button class="btn btn-outline-secondary" onclick="exportCSV(avgViewDurationCSV(), 'avg-view-duration.csv')">Export CSV</button>
+            </div>
+          </div>
+          <canvas id="avgViewDuration" height="180"></canvas>
+        </div>
+      </div>
+      <div class="col-12 col-xl-8">
+        <div class="chart-card">
+          <div class="d-flex justify-content-between align-items-center">
+            <div class="chart-title mb-0">Activity Heatmap (Weekday × Hour)</div>
+            <div class="chart-actions d-flex">
+              <button class="btn btn-outline-secondary" onclick="downloadDOMAsPNG('#activityHeatmap','activity-heatmap.png')">Download PNG</button>
+              <button class="btn btn-outline-secondary" onclick="exportCSV(activityHeatmapCSV(), 'activity-heatmap.csv')">Export CSV</button>
+            </div>
+          </div>
+          <div id="activityHeatmap" class="heatmap"></div>
+        </div>
+      </div>
+      <div class="col-12 col-xl-4">
+        <div class="chart-card">
+          <div class="d-flex justify-content-between align-items-center">
+            <div class="chart-title mb-0">Browsers</div>
+            <div class="chart-actions d-flex">
+              <button class="btn btn-outline-secondary" onclick="downloadPNGFromCanvas('browsers','browsers.png')">Download PNG</button>
+              <button class="btn btn-outline-secondary" onclick="exportCSV(browsersCSV(), 'browsers.csv')">Export CSV</button>
+            </div>
+          </div>
+          <canvas id="browsers" height="160"></canvas>
+        </div>
+        <div class="chart-card">
+          <div class="d-flex justify-content-between align-items-center">
+            <div class="chart-title mb-0">Devices</div>
+            <div class="chart-actions d-flex">
+              <button class="btn btn-outline-secondary" onclick="downloadPNGFromCanvas('devices','devices.png')">Download PNG</button>
+              <button class="btn btn-outline-secondary" onclick="exportCSV(devicesCSV(), 'devices.csv')">Export CSV</button>
+            </div>
+          </div>
+          <canvas id="devices" height="160"></canvas>
+        </div>
+      </div>
+      <div class="col-12">
+        <div class="chart-card">
+          <div class="d-flex justify-content-between align-items-center">
+            <div class="chart-title mb-0">New Users per Month</div>
+            <div class="chart-actions d-flex">
+              <button class="btn btn-outline-secondary" onclick="downloadPNGFromCanvas('newUsersPerMonth','new-users-per-month.png')">Download PNG</button>
+              <button class="btn btn-outline-secondary" onclick="exportCSV(newUsersPerMonthCSV(), 'new-users-per-month.csv')">Export CSV</button>
+            </div>
+          </div>
+          <canvas id="newUsersPerMonth" height="120"></canvas>
+        </div>
+      </div>
+      <div class="col-12">
+        <div class="chart-card">
+          <div class="d-flex justify-content-between align-items-center">
+            <div class="chart-title mb-0">Logged-In Users Map (live)</div>
+            <div class="chart-actions d-flex">
+              <button class="btn btn-outline-secondary" onclick="downloadDOMAsPNG('#usersMap','users-map.png')">Download PNG</button>
+              <button class="btn btn-outline-secondary" onclick="exportCSV(usersMapCSV(), 'users-map.csv')">Export CSV</button>
+            </div>
+          </div>
+          <div id="usersMap" style="height: 380px; border-radius: 8px; overflow: hidden;"></div>
+          <small class="text-muted d-block mt-2">Live sessions will appear here when tracking is enabled.</small>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="{% static 'js/Chart.min.js' %}"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script>
+    // Placeholder data generation helpers
+    const lastNDays = (n) => {
+      const arr = []; const now = new Date();
+      for (let i = n-1; i >= 0; i--) { const d = new Date(now); d.setDate(now.getDate()-i); arr.push(`${d.getMonth()+1}/${d.getDate()}`); }
+      return arr;
+    };
+    const rand = (min, max) => Math.floor(Math.random()*(max-min+1))+min;
+
+    // Download helpers
+    function downloadPNGFromCanvas(canvasId, filename) {
+      const canvas = document.getElementById(canvasId);
+      if (!canvas) return;
+      const link = document.createElement('a');
+      link.href = canvas.toDataURL('image/png');
+      link.download = filename;
+      link.click();
+    }
+    function exportCSV(rows, filename) {
+      const csv = rows.map(r => r.map(v => {
+        const s = (v ?? '').toString();
+        return /[",\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s;
+      }).join(',')).join('\n');
+      const blob = new Blob([csv], {type: 'text/csv;charset=utf-8;'});
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url; link.download = filename; link.click();
+      URL.revokeObjectURL(url);
+    }
+    async function downloadDOMAsPNG(selector, filename) {
+      const el = document.querySelector(selector);
+      if (!el) return;
+      const canvas = await html2canvas(el, {useCORS: true, allowTaint: true});
+      const link = document.createElement('a');
+      link.href = canvas.toDataURL('image/png');
+      link.download = filename; link.click();
+    }
+
+    // 1) Events Over Time
+    const days30 = lastNDays(30);
+    const eventsOverTimeLabels = days30;
+    const eventsOverTimeValues = days30.map(()=>rand(20, 200));
+    new Chart(document.getElementById('eventsOverTime'), {
+      type: 'line',
+      data: { labels: eventsOverTimeLabels, datasets: [{ label: 'Events', data: eventsOverTimeValues, borderColor: '#198754', backgroundColor: 'rgba(25,135,84,.15)', tension: .25, fill: true }] },
+      options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+    });
+    function eventsOverTimeCSV() {
+      const rows = [['Date','Events']];
+      eventsOverTimeLabels.forEach((l,i)=>rows.push([l, eventsOverTimeValues[i]]));
+      return rows;
+    }
+
+    // 2) Events by Type
+    const eventsByTypeLabels = ['Page Views', 'Clicks', 'Form Submits', 'Other'];
+    const eventsByTypeValues = [55, 28, 10, 7];
+    new Chart(document.getElementById('eventsByType'), {
+      type: 'doughnut',
+      data: { labels: eventsByTypeLabels, datasets: [{ data: eventsByTypeValues, backgroundColor: ['#198754','#0dcaf0','#ffc107','#dc3545'] }] },
+      options: { plugins: { legend: { position: 'bottom' } } }
+    });
+    function eventsByTypeCSV() {
+      const rows = [['Type','Count']];
+      eventsByTypeLabels.forEach((l,i)=>rows.push([l, eventsByTypeValues[i]]));
+      return rows;
+    }
+
+    // 3) Top Page Views
+    const topPageViewsLabels = ['/home','/products','/orders','/profile','/faq'];
+    const topPageViewsValues = [890, 650, 420, 300, 210];
+    new Chart(document.getElementById('topPageViews'), {
+      type: 'bar',
+      data: { labels: topPageViewsLabels, datasets: [{ label: 'Views', data: topPageViewsValues, backgroundColor: '#0dcaf0' }] },
+      options: { indexAxis: 'y', plugins: { legend: { display: false } } }
+    });
+    function topPageViewsCSV() {
+      const rows = [['Page','Views']];
+      topPageViewsLabels.forEach((l,i)=>rows.push([l, topPageViewsValues[i]]));
+      return rows;
+    }
+
+    // 4) Clicks per Page
+    const clicksPerPageLabels = ['/home','/products','/orders','/profile','/faq'];
+    const clicksPerPageValues = [210, 320, 180, 90, 60];
+    new Chart(document.getElementById('clicksPerPage'), {
+      type: 'bar',
+      data: { labels: clicksPerPageLabels, datasets: [{ label: 'Clicks', data: clicksPerPageValues, backgroundColor: '#6610f2' }] },
+      options: { indexAxis: 'y', plugins: { legend: { display: false } } }
+    });
+    function clicksPerPageCSV() {
+      const rows = [['Page','Clicks']];
+      clicksPerPageLabels.forEach((l,i)=>rows.push([l, clicksPerPageValues[i]]));
+      return rows;
+    }
+
+    // 5) Top Elements Clicked
+    const topElementsLabels = ['Add to Cart','Buy Now','Search','Filter','Menu'];
+    const topElementsValues = [420, 360, 280, 170, 110];
+    new Chart(document.getElementById('topElements'), {
+      type: 'bar',
+      data: { labels: topElementsLabels, datasets: [{ label: 'Clicks', data: topElementsValues, backgroundColor: '#ffc107' }] },
+      options: { indexAxis: 'y', plugins: { legend: { display: false } } }
+    });
+    function topElementsCSV() {
+      const rows = [['Element','Clicks']];
+      topElementsLabels.forEach((l,i)=>rows.push([l, topElementsValues[i]]));
+      return rows;
+    }
+
+    // 6) Avg View Duration per day (sec)
+    const avgViewDurationLabels = days30;
+    const avgViewDurationValues = days30.map(()=>rand(20, 120));
+    new Chart(document.getElementById('avgViewDuration'), {
+      type: 'line',
+      data: { labels: avgViewDurationLabels, datasets: [{ label: 'Avg Secs', data: avgViewDurationValues, borderColor: '#0d6efd', backgroundColor: 'rgba(13,110,253,.15)', tension: .25, fill: true }] },
+      options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+    });
+    function avgViewDurationCSV() {
+      const rows = [['Date','AvgSeconds']];
+      avgViewDurationLabels.forEach((l,i)=>rows.push([l, avgViewDurationValues[i]]));
+      return rows;
+    }
+
+    // 7) Activity Heatmap (Weekday x Hour)
+    const weekdays = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+    const activityData = Array.from({length: 7}, ()=>Array.from({length:24},()=>0));
+    const heat = document.getElementById('activityHeatmap');
+    // Header row
+    const header = document.createElement('div'); header.className = 'label'; header.textContent = '';
+    heat.appendChild(header);
+    for (let h = 0; h < 24; h++) { const l = document.createElement('div'); l.className='label text-center'; l.textContent = h; heat.appendChild(l); }
+    // Rows
+    weekdays.forEach(d => {
+      const rlabel = document.createElement('div'); rlabel.className = 'label'; rlabel.textContent = d; heat.appendChild(rlabel);
+      for (let h=0; h<24; h++) {
+        const v = rand(0, 10);
+        activityData[weekdays.indexOf(d)][h] = v;
+        const cell = document.createElement('div'); cell.className='cell';
+        const intensity = v/10; const g = Math.floor(238 - 150*intensity); const b = Math.floor(238 - 150*intensity);
+        cell.style.backgroundColor = `rgb(200, ${g}, ${b})`;
+        cell.title = `${d} ${h}:00 — ${v} events`;
+        heat.appendChild(cell);
+      }
+    });
+    function activityHeatmapCSV() {
+      const rows = [['Weekday', ...Array.from({length:24}, (_,h)=>`${h}:00`)]];
+      weekdays.forEach((d, di) => rows.push([d, ...activityData[di]]));
+      return rows;
+    }
+
+    // 8) Browsers
+    const browsersLabels = ['Chrome','Safari','Edge','Firefox','Other'];
+    const browsersValues = [58, 22, 10, 7, 3];
+    new Chart(document.getElementById('browsers'), {
+      type: 'doughnut',
+      data: { labels: browsersLabels, datasets: [{ data: browsersValues, backgroundColor: ['#198754','#0d6efd','#6f42c1','#dc3545','#adb5bd'] }] },
+      options: { plugins: { legend: { position: 'bottom' } } }
+    });
+    function browsersCSV() {
+      const rows = [['Browser','Share']];
+      browsersLabels.forEach((l,i)=>rows.push([l, browsersValues[i]]));
+      return rows;
+    }
+
+    // 9) Devices
+    const devicesLabels = ['Mobile','Desktop','Tablet'];
+    const devicesValues = [62, 33, 5];
+    new Chart(document.getElementById('devices'), {
+      type: 'doughnut',
+      data: { labels: devicesLabels, datasets: [{ data: devicesValues, backgroundColor: ['#0dcaf0','#198754','#ffc107'] }] },
+      options: { plugins: { legend: { position: 'bottom' } } }
+    });
+    function devicesCSV() {
+      const rows = [['Device','Share']];
+      devicesLabels.forEach((l,i)=>rows.push([l, devicesValues[i]]));
+      return rows;
+    }
+
+    // 10) New Users per Month
+    const newUsersMonths = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const newUsersValues = [50,60,55,80,120,140,130,150,160,170,180,200];
+    new Chart(document.getElementById('newUsersPerMonth'), {
+      type: 'bar',
+      data: { labels: newUsersMonths, datasets: [{ label: 'Signups', data: newUsersValues, backgroundColor: '#198754' }] },
+      options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+    });
+    function newUsersPerMonthCSV() {
+      const rows = [['Month','Signups']];
+      newUsersMonths.forEach((m,i)=>rows.push([m, newUsersValues[i]]));
+      return rows;
+    }
+
+    // 11) Logged-In Users Map (placeholder markers)
+    const map = L.map('usersMap').setView([0,0], 2);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap' }).addTo(map);
+    const sampleMarkers = [ {lat: 37.7749, lon: -122.4194, label: 'San Francisco'}, {lat: 51.5074, lon: -0.1278, label: 'London'}, {lat: -26.2041, lon: 28.0473, label: 'Johannesburg'} ];
+    sampleMarkers.forEach(m => L.marker([m.lat, m.lon]).addTo(map).bindPopup(m.label));
+    function usersMapCSV() {
+      const rows = [['Label','Latitude','Longitude']];
+      sampleMarkers.forEach(m=>rows.push([m.label, m.lat, m.lon]));
+      return rows;
+    }
+  </script>
+</body>
+</html>

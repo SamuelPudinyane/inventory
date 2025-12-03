@@ -65,7 +65,7 @@
 
                         <!-- Form for submitting testimonial -->
                         <div class="mt-4">
-                           <a href="{% url 'write_review' inventory.pk %}" class="btn btn-outline-primary">Write a Review</a>
+                           <a href="{% url 'write_review' inventory.id %}" class="btn btn-outline-primary">Write a Review</a>
                         </div>
                     </div>
                 </div>
@@ -85,10 +85,10 @@
                         {% endfor %}
 
                     </p>
-                    <p>By: {{ testimonial.created_by.username }}</p>
-                    {% if testimonial.created_by == request.user %}
-                    <a href="{% url 'update_testimonial' testimonial.pk %}" class="btn btn-primary btn-sm">Edit</a>
-                    <form action="{% url 'delete_testimonial' testimonial.pk %}" method="post" style="display: inline;">
+                    <p>By: {{ testimonial.username }}</p>
+                    {% if testimonial.user_id == user.user_id %}
+                    <a href="{% url 'update_testimonial' testimonial.id %}" class="btn btn-primary btn-sm">Edit</a>
+                    <form action="{% url 'delete_testimonial' testimonial.id %}" method="post" style="display: inline;">
                         {% csrf_token %}
                         <button type="submit" class="btn btn-danger btn-sm">Delete</button>
                     </form>

@@ -26,10 +26,11 @@
     <h1 class="text-center mb-4" style="padding-top: 2.0rem;">Your profile</h1>
     
         <div class="card p-3 mx-auto" style="max-width: 700px;">
+            {% if user.profile.avatar.ur %}
             <div class="row my-3">
                 <img class="rounded-circle account-img" src="{{ user.profile.avatar.url }}" alt="Avatar" style="cursor: pointer; max-width: 200px;">
             </div>
-            
+            {% endif %}
             <div class="card mb-3">
                 <div class="card-body">
                   <h5 class="card-title">{{user.username}}</h5>
@@ -62,12 +63,12 @@
                 </div>
             {% endif %}
 
-            <!-- Trigger button -->
+            <!-- Trigger button 
 <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#editProfileModal">
     Edit Profile
   </button>
   
-  <!-- Edit Profile Modal -->
+   Edit Profile Modal 
   <div class="modal fade" id="editProfileModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
     <div class="modal-dialog" role="document">
       <div class="modal-content">
@@ -113,7 +114,7 @@
                 </div>
                 <br>
                 <div class="form-group text-center">
-                  <a class="btn btn-success" href="{% url 'password_change' %}">Change Password</a>
+                  {% if password_change %}<a class="btn btn-success" href="{% url 'password_change' %}">Change Password</a>{% endif %}
                   <hr>
                 </div>
               </div>
@@ -125,7 +126,7 @@
         </div>
       </div>
     </div>
-  </div>
+  </div>-->
 
 <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.2/dist/umd/popper.min.js"></script>

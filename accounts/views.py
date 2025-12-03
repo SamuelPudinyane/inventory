@@ -11,7 +11,10 @@ from django.conf import settings
 from django_pandas.io import read_frame
 import pandas as pd
 import plotly
+import base64
+import mimetypes
 import plotly.express as px
+import uuid
 # import openpyxl
 from django.core.files import File
 # from openpyxl_image_loader import SheetImageLoader
@@ -24,6 +27,8 @@ from io import BytesIO
 from django.core.files.base import ContentFile
 from barcode.codex import Code128
 import csv
+from django.core.files.storage import default_storage
+from PIL import Image
 from matplotlib import pyplot as plt
 from statsmodels.tsa.arima.model import ARIMA
 from django.contrib.auth.models import User
@@ -33,25 +38,64 @@ import requests
 import logging
 from accounts import views as accounts_views
 from user.models import Profile
-
+from user.forms import RegisterForm
+import barcode
+from barcode.writer import ImageWriter
+from db_queries import (get_connection,get_catalog_by_supplier,check_order_amount_exists,get_top_ratings,get_latest_testimonials,
+                        insert_catalog,insert_catalog_with_image,get_catalog_by_pk,get_inventory_by_supplier,get_low_stock_inventories,
+                        get_catalogs_by_supplier,get_inventories,insert_inventory,save_barcode_to_db,get_catalogs_by_id,get_inventories_by_id,
+                        get_testimonial_by_id,insert_testimonial,get_testimonial_by_its_id,update_testimonials,delete_testimonials,
+                        delete_inventory,get_inventory_by_name,get_inventory_by_supplierid)
 logging.basicConfig(level=logging.INFO)
 
 LOW_QUANTITY = getattr(settings, 'LOW_QUANTITY', 5)
-
+get_connection()
 def index(request):
-    logged_user = request.user
-    request.session['old_username'] = logged_user.username
+    user_param = request.GET.get('user')
+    print(user_param)
+    # user=request.session['user']
+    # if 'user_id' in user:
+        # logged_user=user
+    user_id = user_param
+    api_endpoint = 'http://127.0.0.1:5000/stemuserprofiles'
+    url = f"{api_endpoint}/{user_id}"
+   
+    try:
+            response = requests.get(url)
+            response.raise_for_status()  # Raise an error for HTTP errors
 
+            user = response.json()
+            user.pop('role',None)
+            print("user ",user)
+            if user:
+                if isinstance(user, dict) and 'avatar' in user:
+                    user['avatar']=decode_base64_to_image(user['avatar'])
+        
+                request.session['user']=user
+            
+    except requests.exceptions.RequestException as e:
+            print(f"Error fetching data: {e}")
+    logged_user = request.session['user']
+    print("logged user ",logged_user)
+    if "role" not in logged_user:
+        form = RegisterForm()
+        if form.is_valid():
+            role=form.data['role']
+            print("role ",role)
+        return render(request, 'users/register.html', {'form': form})
+
+    request.session['old_username'] = logged_user['first_name'] +" "+ logged_user['last_name']
+   
     # Retrieve cart count for the logged-in user
-    if OrderAmount.objects.filter(customer=logged_user).exists():
-        cart_record = get_object_or_404(OrderAmount, customer=logged_user)
-        request.session['cart_count'] = cart_record.cart_count
+    if check_order_amount_exists(logged_user['user_id']):   # OrderAmount.objects.filter(customer=logged_user).exists():
+        cart_record = check_order_amount_exists(logged_user['user_id']) #get_object_or_404(OrderAmount, customer=logged_user)
+        request.session['cart_count'] = cart_record
     else:
         request.session['cart_count'] = 0
 
     # Retrieve latest ratings and testimonials
-    latest_ratings = Rating.objects.all().order_by('-id')[:5]
-    latest_testimonials = Testimonial.objects.all().order_by('-created_at')[:5]
+    latest_ratings = get_top_ratings() #Rating.objects.all().order_by('-id')[:5]
+    latest_testimonials = get_latest_testimonials()   #Testimonial.objects.all().order_by('-created_at')[:5]
 
     context = {
         'latest_ratings': latest_ratings,
@@ -61,41 +105,55 @@ def index(request):
     return render(request, 'accounts/index.html', context)
 
 
-@login_required
+
 def catalog_list(request):
-    catalogs = Catalog.objects.filter(supplier=request.user)
+    user=request.session['user']
+    catalogs = get_catalog_by_supplier(user['user_id']) #Catalog.objects.filter(supplier=user)
     return render(request, 'accounts/catalog_list.html', {'catalogs': catalogs})
 
-@login_required
+
 def catalog_create(request):
+    user=request.session['user']
     if request.method == 'POST':
         form = CatalogForm(request.POST)
         if form.is_valid():
-            catalog = form.save(commit=False)
-            catalog.supplier = request.user  #Assign the current user as the supplier
-            catalog.save()
+            print("form data ",form.data['name'])
+            name=form.data['name']
+            description=form.data['description']
+            supplier_id=user['user_id']
+            insert_catalog(name, description, supplier_id)
+            #catalog = form.save(commit=False)
+            #catalog.supplier = user  #Assign the current user as the supplier
+            #catalog.save()
             return redirect('catalog_list')
     else:
         form = CatalogForm()
     return render(request, 'accounts/catalog_create.html', {'form': form})
 
-@login_required
+
 def upload_catalog(request):
+    user=request.session['user']
     if request.method == 'POST':
-        form = uploadCatalogForm(request.POST, request.FILES)
-        if form.is_valid():
-            catalog = form.save(commit=False)
-            catalog.supplier = request.user  #Assign the current user as the supplier
-            catalog.save()
-            return redirect('extract_catalog_data', pk=catalog.pk)
+       
+            name = request.POST.get('name')
+            description = request.POST.get('description')
+            catalog_file = request.FILES.get('catalog_file')
+            supplier_id=user['user_id']
+            insert_catalog_with_image(name,catalog_file, description, supplier_id)
+            #catalog = form.save(commit=False)
+            #catalog.supplier = request.user  #Assign the current user as the supplier
+            #catalog.save()
+            return redirect('extract_catalog_data',pk=supplier_id)
     else:
         form = uploadCatalogForm()
     return render(request, 'accounts/upload_catalog.html', {'form': form})
 
-@login_required
+
 def extract_catalog_data (request, pk):
-    uploaded_catalog = get_object_or_404(Catalog, pk=pk)
-    file = uploaded_catalog.catalog_file
+    uploaded_catalog = get_catalog_by_pk(pk) #get_object_or_404(Catalog, pk=pk)
+    
+    file = uploaded_catalog['catalogfile']
+    
     catalog_data = pd.read_excel(file)
 
     # Edit catalog data
@@ -144,17 +202,19 @@ def extract_catalog_data (request, pk):
     messages.success(request, "Products successfully saved in the inventory")
     return redirect('catalog_list')
 
-@login_required
+
 def inventory_list(request):
-    inventories = Inventory.objects.filter(catalog__supplier=request.user)
+    user=request.session['user']
+    
+    inventories = get_inventory_by_supplier(user['user_id'])#Inventory.objects.filter(catalog__supplier=user['user_id'])
     
     # Check for low stock items
-    low_stock_inventory = inventories.filter(quantity_in_stock__lte=LOW_QUANTITY)
-
-    if low_stock_inventory.exists():
+    low_stock_inventory = get_low_stock_inventories(LOW_QUANTITY)#inventories.filter(quantity_in_stock__lte=LOW_QUANTITY)
+   
+    if low_stock_inventory:
         # Display a message for each low stock item
         for item in low_stock_inventory:
-            messages.warning(request, f"Low stock alert: {item.name} - quantity in stock: {item.quantity_in_stock}")
+            messages.warning(request, f"Low stock alert: {item['name']} - quantity in stock: {item['quantity_in_stock']}")
 
     paginator = Paginator(inventories, 10)  # Show 10 items per page
 
@@ -167,38 +227,57 @@ def inventory_list(request):
     except EmptyPage:
         # If page is out of range (e.g. 9999), deliver last page of results.
         inventories = paginator.page(paginator.num_pages)
-
+    print("inventories ",inventories)
     return render(request, 'accounts/inventory_list.html', {'inventories': inventories})
 
-@login_required
+
 def create_inventory(request):
+    user=request.session['user']
+    from decimal import Decimal,ROUND_DOWN
+    from io import BytesIO
+    import barcode 
+    catalogs=get_catalogs_by_supplier(user['user_id'])
     if request.method == 'POST':
-        form = InventoryForm(request.user, request.POST, request.FILES)
-        if form.is_valid():
-            inventory = form.save(commit=False)
-            inventory.sales = inventory.cost_per_item * inventory.quantity_sold
+            item_id=request.POST.get('catalog')
+            name=request.POST.get('item')
+            cost_per_item=request.POST.get('cost_per_item')
+            quantity_in_stock=request.POST.get('quantity_in_stock')
+            quantity_sold=request.POST.get('quantity_sold')
+            image=request.POST.get('image')
+            catalog_name=get_catalogs_by_id(item_id)
             
+            sales = Decimal(cost_per_item).quantize(Decimal('0.00'), rounding=ROUND_DOWN) * int(quantity_sold)
+            
+            insert_inventory(name,cost_per_item,quantity_in_stock, quantity_sold,sales,item_id,user['user_id'])
+           
+            inventory = get_inventories(user['user_id'])
+           
+            inventory=inventory[0]
             # Generate barcode and save it to the new inventory item
-            barcode_data = str(inventory.pk) + " " + inventory.name  # Barcode data
+            barcode_data = str(inventory['id']) + " " + inventory['name']  # Barcode data\
+            
+            
             code128 = Code128(barcode_data, writer=ImageWriter())
             barcode_image = code128.render()
+            
+            barcode_image_file = BytesIO()
+            barcode_image.save(barcode_image_file, format='PNG')
+            # Reset the file pointer to the beginning
+            barcode_image_file.seek(0)
 
-            # Convert the barcode image to PNG format
-            image_io = BytesIO()
-            barcode_image.save(image_io, format='PNG')
-            barcode_image_file = ContentFile(image_io.getvalue())
-            inventory.barcode.save(f'barcode_{barcode_data}.png', barcode_image_file, save=False)
-            inventory.save()
+            binary_image_data = barcode_image_file.read()
+            save_barcode_to_db(inventory['id'],binary_image_data)
 
             messages.success(request, "Successfully Added Product")
             return redirect('inventory_list')
     else:
-        form = InventoryForm(request.user)
+        
+        
+        print("catalog ",catalogs)
+    return render(request, 'accounts/create_inventory.html', {'catalogs': catalogs})
 
-    return render(request, 'accounts/create_inventory.html', {'form': form})
 
 
-@login_required
 def add_product(request):
     if request.method == "POST":
         updateForm = AddInventoryForm(request.POST, request.FILES, request.user)
@@ -229,69 +308,92 @@ def add_product(request):
     else:
         updateForm = AddInventoryForm(request.user)
 
-    return render(request, 'accounts/inventory_add.html', {'form': updateForm})
+    return render(request, 'accounts/inventory_add.html')
 
-@login_required
+
 def per_product(request, pk):
-    inventory = get_object_or_404(Inventory, pk=pk)
-    context = {
-        'inventory': inventory
-    }
-    return render(request, "accounts/per_product.html", context=context)
-
-@login_required
-def each_product(request, pk):
-    inventory = get_object_or_404(Inventory, pk=pk)
-
-    testimonials = Testimonial.objects.filter(inventory=inventory)
-
-    return render(request, "accounts/each_product.html", {'inventory':inventory, 'testimonials':testimonials})  
+    inventory = get_inventories_by_id(pk)
     
-@login_required
-def write_review(request, pk):
-    inventory = get_object_or_404(Inventory, pk=pk)
+    output=inventory[0]
+    
+    context={
+        'name':output['name'],
+    'quantity_in_stock':output['quantity_in_stock'],
+    'quantity_sold':output['quantity_sold'],
+    'cost_per_item':output['cost_per_item'],
+    'sales':output['sales'],
+    'stock_date':inventory[0]['stock_date'],
+    'last_sales_date':inventory[0]['last_sales_date'],
+    'barcode_data':inventory[0]['barcode'],
+    'id':output['id']}
+    return render(request, "accounts/per_product.html",context=context)
 
+
+def each_product(request, pk):
+    user=request.session['user']
+    
+    inventory = get_inventories_by_id(pk)
+    testimonials = get_testimonial_by_id(inventory[0]['id'])  #Testimonial.objects.filter(inventory=inventory)
+     
+
+    return render(request, "accounts/each_product.html", {'inventory':inventory[0], 'testimonials':testimonials,"user":user})  
+    
+
+def write_review(request, pk):
+    inventory = get_inventories_by_id(pk) #get_object_or_404(Inventory, pk=pk)
+    user=request.session['user']
+   
     if request.method == 'POST':
-        form = TestimonialForm(request.POST)
-        if form.is_valid():
-            testimonial = form.save(commit=False)
-            testimonial.created_by = request.user
-            testimonial.inventory = inventory
-            testimonial.save()
+            text=request.POST.get('text')
+            rating=request.POST.get('rating')
+            username=user['first_name']+ ' '+user['last_name']
+            insert_testimonial(text, rating,pk,user['user_id'],username)
             messages.success(request, 'Thank you for your review!')
             return redirect('each_product', pk=pk)  # Redirect to the product detail page
-    else:
-        form = TestimonialForm()
+    ratings = [1, 2, 3, 4, 5]
 
-    return render(request, 'accounts/write_review.html', {'form': form, 'inventory': inventory})
+    return render(request, 'accounts/write_review.html', {'ratings':ratings,'inventory': inventory[0]})
 
-@login_required
+
 def delete_testimonial(request, pk):
-    testimonial = get_object_or_404(Testimonial, pk=pk)
-    if testimonial.created_by == request.user:
-        testimonial.delete()
+   
+    # Delete the testimonial using the helper function
+    message = delete_testimonials(pk)  # delete_testimonials should return a relevant message or success status
+    
+    # Check if the deletion was successful
+    if message:  # Adjust condition based on your delete_testimonials function's return behavior
         messages.success(request, 'Testimonial deleted successfully.')
     else:
-        messages.error(request, 'You are not authorized to delete this testimonial.')
-    return redirect('accounts/each_product', pk=testimonial.inventory.pk)
+        messages.error(request, 'Failed to delete the testimonial.')
 
-@login_required
+    # Redirect to the desired page
+    return redirect('each_product', pk=pk)
+
 def update_testimonial(request, pk):
-    testimonial = get_object_or_404(Testimonial, pk=pk)
+ 
+    testimonial = get_testimonial_by_its_id(pk) #get_object_or_404(Testimonial, pk=pk)
+   
+    new_id=testimonial[0]['inventory_id']
+   
     if request.method == 'POST':
-        if testimonial.created_by == request.user:
-            form = TestimonialForm(request.POST, instance=testimonial)
-            if form.is_valid():
-                form.save()
-                messages.success(request, 'Testimonial updated successfully.')
-                return redirect('accounts/each_product', pk=testimonial.inventory.pk)
-        else:
-            messages.error(request, 'You are not authorized to update this testimonial.')
+        text=request.POST.get('text')
+        rating=request.POST.get('rating')
+        # testimonial_id, text, rating, inventory_id, user_id, username
+        update_testimonials(pk,text, rating)
+       
+        messages.success(request, 'Thank you for your review!')
+        return redirect('each_product', pk=new_id)  
     else:
-        form = TestimonialForm(instance=testimonial)
-    return render(request, 'accounts/update_testimonial.html', {'form': form, 'testimonial': testimonial})
+        messages.error(request, 'You are not authorized to update this testimonial.')
+    ratings = [1, 2, 3, 4, 5]
+    data={
+        'text':testimonial[0]['text'],
+        'rating':testimonial[0]['rating'],
+        'id':pk
+    }
+    return render(request, 'accounts/update_testimonial.html',{'ratings':ratings,'data':data})
 
-@login_required
+
 def products(request):
     catalogs = Catalog.objects.filter(is_deleted=False)  # Fetch all non-deleted catalogs
     context = {
@@ -300,7 +402,7 @@ def products(request):
     }
     return render(request, 'orders/products.html', context=context)
 
-@login_required
+
 def update(request, pk):
     inventory = get_object_or_404(Inventory, pk=pk)
     if request.method == "POST":
@@ -316,15 +418,18 @@ def update(request, pk):
 
     return render(request, 'accounts/inventory_update.html', {'form': updateForm})
 
-@login_required
+
 def delete(request, pk):
-    inventory = get_object_or_404(Inventory, pk=pk)
-    inventory.is_deleted = True
-    inventory.delete()
-    messages.success(request, "Inventory Deleted")
+    inventory = delete_inventory(pk) #get_object_or_404(Inventory, pk=pk)
+     # Check if the deletion was successful
+    if inventory:  # Adjust condition based on your delete_testimonials function's return behavior
+        messages.success(request, 'Inventory deleted successfully.')
+    else:
+        messages.error(request, 'Failed to delete the testimonial.')
+
     return redirect('inventory_list')
 
-@login_required
+
 def add_product(request):
     if request.method == "POST":
         updateForm = AddInventoryForm(request.POST, request.FILES)
@@ -340,12 +445,12 @@ def add_product(request):
     return render(request, 'accounts/inventory_add.html', {'form': updateForm})
 
 
-@login_required
-def dashboard(request):
-    supplier = request.user
-    # Get all inventory items
-    inventories = Inventory.objects.filter(catalog__supplier=request.user)
 
+def dashboard(request):
+    user=request.session['user']
+    # Get all inventory items
+    inventories = get_inventory_by_supplier(user['user_id'])#Inventory.objects.filter(catalog__supplier=supplier['user_id'])
+    
     # Check if the inventories are empty
     if not inventories:
         # Handle case where inventory is empty
@@ -357,8 +462,7 @@ def dashboard(request):
     # Convert Inventory queryset to DataFrame
     df = read_frame(inventories)
 
-    # Debug: Print the DataFrame
-    print(df)
+   
 
     # sales graph
     sales_graph_df = df.groupby(by="last_sales_date", as_index=False, sort=False)['sales'].sum()
@@ -403,34 +507,35 @@ def dashboard(request):
     return render(request, "accounts/dashboard.html", context=context)
 
 
-@login_required
+
 def marketing(request):
     context = {}
     return render(request, 'accounts/marketing.html', context)
 
 
-@login_required
+
 def about(request):
     context = {}
     return render(request, 'accounts/about.html', context)
 
 # Search for something
-@login_required
+
 def search(request):
     if request.method == "POST":
         searched = request.POST['searched']
-        inventories = Inventory.objects.filter(name__contains=searched)
+        inventories = get_inventory_by_name(searched) #Inventory.objects.filter(name__contains=searched)
 
         return render(request, 'accounts/search.html', {'searched': searched, 'inventories': inventories})
     else:
         return render(request, 'accounts/search.html', {})
 
 
-@login_required
+
 def generate_sales_report(request):
     supplier = request.user
+    user=request.session['user']
     # Get all inventory items
-    inventories = Inventory.objects.filter(catalog__supplier=supplier)
+    inventories = get_inventory_by_supplier(user['user_id'])#Inventory.objects.filter(catalog__supplier=supplier)
 
     # Create a response object with CSV content
     response = HttpResponse(content_type='text/csv')
@@ -445,23 +550,24 @@ def generate_sales_report(request):
 
     # Loop through each inventory item and write sales data
     for inventory in inventories:
-        writer.writerow([inventory.name, inventory.sales,
-                        inventory.quantity_sold, inventory.last_sales_date])
+        writer.writerow([inventory['name'], inventory['sales'],
+                        inventory['quantity_sold'], inventory['last_sales_date']])
 
      # Update or create SalesData entries
         SalesData.objects.update_or_create(
             product=inventory,
-            date=inventory.last_sales_date,
-            defaults={'quantity_sold': inventory.quantity_sold}
+            date=inventory['last_sales_date'],
+            defaults={'quantity_sold': inventory['quantity_sold']}
         )
 
     return response
 
-@login_required
+
 def analyze_sales_data(request):
     supplier = request.user
+    user=request.session['user']
     # Get all inventory items
-    inventories = Inventory.objects.filter(catalog__supplier=supplier)
+    inventories = get_inventory_by_supplierid(user['user_id']) #Inventory.objects.filter(catalog__supplier=supplier)
 
     # Check if the inventories are empty
     if not inventories:
@@ -518,7 +624,7 @@ def analyze_sales_data(request):
     # Pass the forecast data to the template
     return render(request, 'accounts/analyze_sales_data.html', context)
 
-@login_required
+
 def subscription(request):
     if request.method == 'POST':
         form = SubscriptionForm(request.POST)
@@ -546,7 +652,7 @@ def send_subscription_confirmation_email(email):
     send_mail(subject, message, sender_email, recipient_list)
 
 
-@login_required
+
 def send_bulk_emails(request):
     if request.method == 'POST':
         form = BulkEmailForm(request.POST, request.FILES)
@@ -593,7 +699,7 @@ def send_bulk_emails(request):
 
     return render(request, 'accounts/bulk_email.html', context)
 
-@login_required
+
 def rate(request):
     catalogs = Catalog.objects.filter(is_deleted=False)  # Fetch all non-deleted catalogs
     context = {
@@ -603,7 +709,7 @@ def rate(request):
     return render(request, 'accounts/rate.html', context)
 
 
-@login_required
+
 def rate_inventory(request, inventory_id):
     if request.method == 'POST':
         inventory = Inventory.objects.get(id=inventory_id)
@@ -613,7 +719,7 @@ def rate_inventory(request, inventory_id):
         messages.success(request, 'Thank you for rating!')
     return redirect('rate')  # Redirect to the rate page
 
-@login_required
+
 def distributor(request):
     if request.method == 'POST':
         form = DistributorForm(request.POST)
@@ -625,7 +731,7 @@ def distributor(request):
         form = DistributorForm()
     return render(request, 'accounts/distributor.html', {'form': form})
 
-@login_required
+
 def distributor_list(request):
     distributors = Distributor.objects.all()  # Retrieve all distributors from the database
     return render(request, 'accounts/distributor_list.html', {'distributors': distributors})
@@ -637,10 +743,11 @@ def extract_city_from_address(address):
         return parts[2].strip() if len(parts) > 2 else ''
     return ''
 
-@login_required
+
 def nearby_suppliers(request):
     if 'q' in request.GET:
         query = request.GET.get('q')
+        
         profiles = Profile.objects.filter(is_supplier=True)
         suggestions = []
 
@@ -658,7 +765,7 @@ def nearby_suppliers(request):
         return JsonResponse(suggestions, safe=False)
     return render(request, 'users/nearby_suppliers.html')
 
-@login_required
+
 def each_catalog(request, catalog_id):
     catalog = get_object_or_404(Catalog, pk=catalog_id)
     my_products = Catalog.objects.filter(is_deleted=False, supplier=request.user)
@@ -671,3 +778,85 @@ def each_catalog(request, catalog_id):
     
     return render(request, 'accounts/each_catalog.html', context)
     
+
+def convert_file_to_base64(uploaded_file):
+    """
+    Convert the uploaded file (InMemoryUploadedFile) to a Base64 encoded string.
+    """
+    try:
+        # Read the content of the uploaded file
+        file_content = uploaded_file.read()
+
+        # Encode the file content to Base64
+        base64_string = base64.b64encode(file_content).decode('utf-8')
+
+        return base64_string
+
+    except Exception as e:
+        print(f"Error converting file to Base64: {e}")
+        return None
+
+
+def decode_base64_to_image(base64_string):
+    """
+    Convert a Base64 string back to an image.
+    """
+    try:
+        # Decode the Base64 string
+        imgdata = base64.b64decode(base64_string)
+
+        # Create an in-memory file from the decoded data
+        image_file = ContentFile(imgdata)
+
+        # Verify image validity (optional)
+        try:
+            Image.open(image_file)  # This will attempt to open the image
+        except IOError:
+            raise ValueError("Invalid image data.")
+
+        return image_file
+
+    except Exception as e:
+        raise ValueError(f"Error decoding Base64 image: {e}")
+
+def handle_uploaded_file(uploaded_file):
+    # Step 1: Convert the uploaded file to Base64 string
+    base64_string = convert_file_to_base64(uploaded_file)
+    
+    if base64_string:
+        # Step 2: Decode the Base64 string to an image
+        image_file = decode_base64_to_image(base64_string)
+        print("Image successfully decoded.")
+        return image_file
+    else:
+        print("Error in file conversion.")
+        return None
+
+
+
+
+
+
+
+def analytics_tracker(request):
+    """
+    Render the Analytics Tracker dashboard. This page currently uses placeholder
+    data rendered by Chart.js and Leaflet. Hook real data sources later.
+    """
+    return render(request, 'accounts/analytics_tracker.html')
+
+from django.contrib.auth import logout
+
+def logout_view(request):
+    logout(request)
+    request.session.flush()  # Clear session data
+    messages.success(request, "You have been logged out.")
+    from django.http import HttpResponseRedirect
+    return HttpResponseRedirect('http://127.0.0.1:5000')
+
+
+
+
+
+
+

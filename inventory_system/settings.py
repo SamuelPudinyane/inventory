@@ -105,12 +105,44 @@ WSGI_APPLICATION = 'inventory_system.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.postgresql',
+#         'HOST':'localhost',
+#         'NAME':'inventory_system',
+#         'USER':'postgres',
+#         'PASSWORD':'Admin',
+#         'PORT':5432,
+#     }
+# }
+
 DATABASES = {
-    'default': dj_database_url.config(
-        default='postgres://postgres:Musa@localhost:5432/inventory_system',
-        conn_max_age=600
-    )
+    'default': {
+        'ENGINE': 'mssql',
+        'NAME': 'inventory',
+        'USER': '',  # Leave blank if using Windows Authentication
+        'PASSWORD': '',  # Leave blank if using Windows Authentication
+        'HOST': 'APB-JBS02-113L\\SQLEXPRESS',  # Escape backslash
+        'PORT': '',  # SQL Server default port is usually fine to omit
+        'OPTIONS': {
+            'driver': 'ODBC Driver 17 for SQL Server',  # Check your actual installed driver
+            'trusted_connection': 'yes',  # Enables Windows Auth
+        },
+    }
 }
+
+
+
+
+
+#dj_database_url.config(
+        #default='postgres://user:password@localhost:5432/inventory_system',
+        #conn_max_age=600
+    #)
+##DATABASES = {
+    ##'default': dj_database_url.config(default='postgres://user:password@Malva:5432/database_name')
+#}
+
 
 
 # Password validation
@@ -175,3 +207,6 @@ LOW_QUANTITY = 5
 # login redirect path settings
 LOGIN_REDIRECT_URL = '/accounts'
 LOGIN_URL = 'index'
+
+SESSION_COOKIE_AGE = 3600  # 1 hour in seconds
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True

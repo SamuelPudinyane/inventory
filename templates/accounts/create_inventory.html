@@ -15,12 +15,44 @@
             <fieldset>
                 <legend class="border-bottom pb-2 mb-4 text-center" style="padding-top: 2.0rem;">Inventory Add Form</legend>
                 {% csrf_token %}
-                <div class="form-group">
-                    {{ form|crispy }}
-                </div>
-                <div class="form-group pt-4">
-                  <button class="btn btn-outline-success" type="submit">Submit</button>
-                </div>
+                
+            <div class="mb-3">
+                <label for="catalog" class="form-label">Catalog</label>
+                <select id="catalog" name="catalog" class="form-select" required>
+                    <option value="" disabled selected>Select a catalog</option>
+                    <!-- Dynamically populate options -->
+                    {% for catalog in catalogs %}
+                        <option value="{{ catalog.catalogid }}">{{ catalog.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="mb-3">
+                <label for="name" class="form-label">Name</label>
+                <input type="text" id="name" name="item" class="form-control" placeholder="Enter item name" required>
+            </div>
+
+            <div class="mb-3">
+                <label for="cost_per_item" class="form-label">Cost per Item</label>
+                <input type="number" id="cost_per_item" name="cost_per_item" class="form-control" placeholder="Enter cost per item" step="0.01" required>
+            </div>
+
+            <div class="mb-3">
+                <label for="quantity_in_stock" class="form-label">Quantity in Stock</label>
+                <input type="number" id="quantity_in_stock" name="quantity_in_stock" class="form-control" placeholder="Enter quantity in stock" min="0" required>
+            </div>
+
+            <div class="mb-3">
+                <label for="quantity_sold" class="form-label">Quantity Sold</label>
+                <input type="number" id="quantity_sold" name="quantity_sold" class="form-control" placeholder="Enter quantity sold" min="0" required>
+            </div>
+
+            <div class="mb-3">
+                <label for="image" class="form-label">Upload Image</label>
+                <input type="file" id="image" name="image" class="form-control-file" accept="image/*" required>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Submit</button>
             </fieldset>
         </form>
     </div>

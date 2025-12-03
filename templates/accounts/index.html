@@ -43,7 +43,7 @@
     }
 
     .nav-link {
-    font-size: 18px;
+    font-size: 12px;
     }
 
     .custom-border {
@@ -53,7 +53,7 @@
     }
 
     .custom-text-size {
-        font-size: 18px;
+        font-size: 16px;
     }
 
     .content-wrapper {
@@ -258,7 +258,9 @@
     width: 100%;
     z-index: 1000;
     }
-    
+    .navbar a{
+        
+    }
     .card {
     min-height: 300px; /* Adjust the height as needed */
     }
@@ -283,10 +285,8 @@
                     <li class="nav-item">
                         <a class="nav-link active text-white" aria-current="page" href="{% url 'index' %}">Home</a>
                     </li>
-    
-    
-                    {% if request.user.is_authenticated %}
-                    {% if is_customer %}
+                    
+                    {% if user.role|lower == "customer" %}
                     <li class="nav-item">
                         <a class="nav-link active text-white" href="{% url 'products' %}">Products</a>
                     </li>
@@ -308,9 +308,7 @@
                     </li>
 
                     {% endif %}
-
-                    {% if is_supplier %}
-    
+                    {% if user.role|lower == "supplier" %}
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle active text-white" href="#" id="navbarDropdown" role="button"
                             data-bs-toggle="dropdown" aria-expanded="false">
@@ -361,10 +359,9 @@
                     <li class="nav-item">
                         <a class="nav-link active text-white" href="{% url 'distributor_list' %}">Distributors</a>
                     </li>
-
                     {% endif %}
-    
-                    {% if is_distributor %}
+                    
+                    {% if user.role|lower == "distributor" %}
 
                     <!-- Display distributor's list for suppliers -->
                     <li class="nav-item">
@@ -372,14 +369,18 @@
                     </li>
 
                     {% endif %}
-    
                     <li class="nav-item">
                         <a class="nav-link active text-white" href="{% url 'users-profile' %}">Profile</a>
                     </li>
-                    {% endif %}
+                    <li class="nav-item">
+                        <a class="nav-link active text-white" href="{% url 'analytics_tracker' %}">Analytics Tracker</a>
+                    </li>
+                       <li class="nav-item">
+                           <a class="nav-link active text-white custom-logout-btn" href="{% url 'logout' %}">Logout</a>
+                       </li>
+                    
                 </ul>
     
-                {% if request.user.is_authenticated %}
                 <div>
                     <form class="d-flex" method="POST" action="{% url 'search' %}">
                         {% csrf_token %}
@@ -388,21 +389,9 @@
                         <button class="btn custom-search-btn" type="submit">Search</button>
                     </form>
                 </div>
-                {% endif %}
                 <br>
     
-                <div>
-                    {% if not request.user.is_authenticated %}
-                    <form action="{% url 'login' %}" method="get" style="display: inline;">
-                        <button type="submit" class="btn custom-logout-btn">Login</button>
-                    </form>
-                    {% else %}
-                    <form action="{% url 'logout' %}" method="post" style="display: inline;">
-                        {% csrf_token %}
-                        <button type="submit" class="btn custom-logout-btn">Logout</button>
-                    </form>
-                    {% endif %}
-                </div>
+             
     
             </div>
         </div>

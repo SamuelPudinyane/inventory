@@ -6,104 +6,84 @@ from django.contrib.messages.views import SuccessMessageMixin
 from django.views import View
 from django.contrib.auth.decorators import login_required
 from .models import Profile
+from db_queries import (update_billing_email,)
 from user.forms import RegisterForm, LoginForm, UpdateUserForm, UpdateProfileForm
 from django.core.exceptions import ObjectDoesNotExist
 from django.contrib.auth.models import User, Group
 from orders.models import Invoice, cart, cart_records, customerOrderHistory, OrderAmount
+import requests
+from accounts import views
 
-
-@login_required
 def logout(request):
     return redirect(to='')
 
 # custom 404 view
 
 
-@login_required
+
 def custom_404(request, exception):
     return render(request, 'users/404.html', status=404)
 
 
 class RegisterView(View):
     form_class = RegisterForm
-    initial = {'key': 'value'}
     template_name = 'users/register.html'
 
-    def dispatch(self, request, *args, **kwargs):
-        # will redirect to the index page if a user tries to access the register page while logged in
-        if request.user.is_authenticated:
-            return redirect(to='')
+    def get(self, request):
+        print("GET request - creating new form")
+        form = self.form_class()
+        print("Form fields:", form.fields.keys())
+        user=request.session['user']
+        return render(request, self.template_name, {'form': form,'user':user})
 
-        # else process dispatch as it otherwise normally would
-        return super(RegisterView, self).dispatch(request, *args, **kwargs)
-
-    def get(self, request, *args, **kwargs):
-        form = self.form_class(initial=self.initial)
-        is_supplier = request.user.groups.filter(name='supplier').exists()
-        is_distributor = request.user.groups.filter(name='distributor').exists()
-        
-        return render(request, self.template_name, {'form': form, 'is_supplier': is_supplier, 'is_distributor': is_distributor})
-
-    def post(self, request, *args, **kwargs):
+    def post(self, request):
+        print("POST request received")
         form = self.form_class(request.POST)
-
+        print("Form is valid?", form.is_valid())
+        
         if form.is_valid():
-            print("Form data:", request.POST)
-            # Save the form data but don't commit to the database yet
-            user = form.save(commit=False)
+            user_details = request.session.get('user', {})
+            
+            if not user_details:
+                return render(request, self.template_name, {
+                    'form': form,
+                    'error': "Missing session data. Please complete the previous registration steps."
+                })
 
+           
+                
             role = form.cleaned_data['role']
-
-            group_name = ''
-
-            if role == 'customer':
-                group_name = 'customer'
-            elif role == 'admin':
-                group_name = 'admin'
-            elif role == 'supplier':
-                group_name = 'supplier'
-            elif role == 'distributor':
-                group_name = 'distributor'
-
-            try:
-                group = Group.objects.get(name=group_name)
-            except ObjectDoesNotExist:
-                # Create the group if it doesn't exist
-                group = Group.objects.create(name=group_name)
-
-            if role == 'admin':
-                user.is_superuser = True
-                user.is_staff = True
-
-            user.save()  # Now commit the changes to the database
-
-            user.groups.add(group)  # Add the user to the group after saving
-
-            username = form.cleaned_data.get('username')
-            messages.success(request, f'Account created for {username}')
-
-            return redirect(to='login')
+            group_name = role.lower()  # Ensure lowercase to match your choices
+                
+            group, created = Group.objects.get_or_create(name=group_name)
+                
+            user_details['role']=role
+            request.session['user']=user_details
+            print("user ",user_details)
+            return render(request,'accounts/index.html',{'user':user_details})
+                
+           
 
         return render(request, self.template_name, {'form': form})
 
 # Class based view that extends from the built in login view to add a remember me functionality
 
 
-class CustomLoginView(LoginView, SuccessMessageMixin):
-    form_class = LoginForm
+# class CustomLoginView(LoginView, SuccessMessageMixin):
+#     form_class = LoginForm
 
-    def form_valid(self, form):
-        remember_me = form.cleaned_data.get('remember_me')
+#     def form_valid(self, form):
+#         remember_me = form.cleaned_data.get('remember_me')
 
-        if not remember_me:
-            # set session expiry to 0 seconds. So it will automatically close the session after the browser is closed.
-            self.request.session.set_expiry(0)
+#         if not remember_me:
+#             # set session expiry to 0 seconds. So it will automatically close the session after the browser is closed.
+#             self.request.session.set_expiry(0)
 
-            # Set session as modified to force data updates/cookie to be saved.
-            self.request.session.modified = True
+#             # Set session as modified to force data updates/cookie to be saved.
+#             self.request.session.modified = True
 
-        # else browser session will be as long as the session cookie time "SESSION_COOKIE_AGE" defined in settings.py
-        return super(CustomLoginView, self).form_valid(form)
+#         # else browser session will be as long as the session cookie time "SESSION_COOKIE_AGE" defined in settings.py
+#         return super(CustomLoginView, self).form_valid(form)
 
 
 class ResetPasswordView(SuccessMessageMixin, PasswordResetView):
@@ -123,44 +103,59 @@ class ChangePasswordView(SuccessMessageMixin, PasswordChangeView):
     success_url = reverse_lazy('login')
 
 
-@login_required
 def profile(request):
-    logged_user = request.user
-    profile_info = Profile.objects.get(user_id=logged_user.id)
+    
+    user=request.session['user']
+    id=user['user_id']
+    api_endpoint = 'http://127.0.0.1:5000/stemuserprofiles'
+    url = f"{api_endpoint}/{id}"
 
-    if request.method == 'POST':
-        user_form = UpdateUserForm(request.POST, instance=request.user)
-        profile_form = UpdateProfileForm(request.POST, request.FILES, instance=request.user.profile)
+    try:
+        response = requests.get(url)
+        response.raise_for_status()  # Raise an error for HTTP errors
 
-        if user_form.is_valid() and profile_form.is_valid():
-            user_form.save()
-            profile_form.save()
-            messages.success(request, 'Your profile is updated successfully')
-            return redirect(to='users-profile')
-    else:
-        user_form = UpdateUserForm(instance=request.user)
-        profile_form = UpdateProfileForm(instance=request.user.profile)
+        user = response.json()
+    except request.exceptions.RequestException as e:
+        print(f"Error fetching data: {e}")
+    profile_info = user
+
+    #if request.method == 'POST':
+        #user_form = UpdateUserForm(request.POST, instance=request.user)
+        #profile_form = UpdateProfileForm(request.POST, request.FILES, instance=request.user.profile)
+
+        #if user_form.is_valid() and profile_form.is_valid():
+            #user_form.save()
+            #profile_form.save()
+            #messages.success(request, 'Your profile is updated successfully')
+            #return redirect(to='users-profile')
+    #else:
+        #user_form = UpdateUserForm(instance=request.user)
+        #profile_form = UpdateProfileForm(instance=request.user.profile)
 
         # update order management
-    customer_name = request.session.get('old_username', None)
-    if customer_name is not None:
-        Invoice.objects.filter(billing_name=customer_name).update(billing_email=logged_user.email)
-        cart.objects.filter(customer=customer_name).update(customer=request.user.username)
-        customerOrderHistory.objects.filter(customer=customer_name).update(customer=request.user.username)
-        cart_records.objects.filter(customer=customer_name).update(customer=request.user.username)
-        OrderAmount.objects.filter(customer=customer_name).update(customer=request.user.username)
-    
-    users = None
-    if request.user.is_superuser:
-        users = User.objects.exclude(is_superuser=True)
-        
-    if request.user.is_superuser:
+    customer_name = user
+    username=customer_name['first_name']+" "+customer_name['last_name']
+    email=customer_name['email']
+   
+
+    api_endpoint = 'http://127.0.0.1:5000/users_profiles'
+    url = f"{api_endpoint}"
+
+    try:
+        response = requests.get(url)
+        response.raise_for_status()  # Raise an error for HTTP errors
+
+        users = response.json()
+        print("all users ", users)
+    except request.exceptions.RequestException as e:
+        print(f"Error fetching data: {e}")
+    if 'admin' in user:
         return render(request, 'users/admin_profile.html', {'users': users})
     else:
-        return render(request, 'users/profile.html', {'user_form': user_form, 'profile_form': profile_form, 'profile': profile_info, 'user': logged_user})
+        return render(request, 'users/profile.html', {'profile': profile_info, 'user': customer_name})
 
 
-@login_required
+
 def view_user(request, user_id):
     user = get_object_or_404(User, id=user_id)
     # You can fetch additional information related to the user if needed

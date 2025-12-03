@@ -2,6 +2,7 @@
 from django.db import models
 from orders.models import Order
 from django.contrib.auth.models import User
+from django.utils import timezone
 
 class Catalog(models.Model):
     name = models.CharField(max_length=100)
@@ -151,3 +152,39 @@ class Distributor(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class AnalyticsEvent(models.Model):
+    """Stores analytics events for charts and live maps."""
+    EVENT_TYPES = [
+        ("page_view", "Page View"),
+        ("click", "Click"),
+        ("submit", "Form Submit"),
+        ("other", "Other"),
+    ]
+
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    user_role = models.CharField(max_length=50, null=True, blank=True)
+    session_id = models.CharField(max_length=64, null=True, blank=True)
+    event_type = models.CharField(max_length=20, choices=EVENT_TYPES)
+    page_path = models.CharField(max_length=255, null=True, blank=True)
+    element = models.CharField(max_length=255, null=True, blank=True)
+    duration_ms = models.PositiveIntegerField(null=True, blank=True)
+    browser = models.CharField(max_length=100, null=True, blank=True)
+    device_type = models.CharField(max_length=50, null=True, blank=True)
+    user_agent = models.TextField(null=True, blank=True)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    metadata = models.JSONField(null=True, blank=True)
+    created_at = models.DateTimeField(default=timezone.now, db_index=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["created_at"]),
+            models.Index(fields=["event_type"]),
+            models.Index(fields=["page_path"]),
+        ]
+
+    def __str__(self):
+        return f"{self.event_type} {self.page_path or ''} @ {self.created_at:%Y-%m-%d %H:%M}"

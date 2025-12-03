@@ -5,6 +5,10 @@ body {
     min-height: 100vh;
     opacity: 0.99;
 }
+.ul li a{
+    font-size: 10px;
+    
+}
 
 .dark-image {
     /* Apply a dark filter to the image */
@@ -154,20 +158,9 @@ body {
     background-color: #6c6868; 
     border: 2px solid #5a5858; 
     padding: 20px;
-    /* transition: opacity 0.5s ease-in-out, transform 0.5s ease-in-out; */
 }
 
-/* .box.active {
-    opacity: 1; 
-    transform: translateY(0);
-} */
 
 .col-md-6 {
     width: 48%;
 }
-
-/* .custom-column {
-    margin-bottom: 20px; 
-    background-color: #5c5959;
-    border: 2px solid #5a5858; 
-} */

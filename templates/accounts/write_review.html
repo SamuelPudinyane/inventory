@@ -12,14 +12,25 @@
         <h1 class="text-center mb-4" style="padding-top: 2.0rem;">Write a Review</h1>
         <form method="POST">
             {% csrf_token %}
-            {{ form|crispy }}
+            <label for="id_text">Text:</label><br>
+        <textarea id="id_text" name="text" rows="4" cols="50" required>{{ form.text.value|default:'' }}</textarea><br><br>
+        
+        <label for="id_rating">Rating:</label><br>
+        <select id="id_rating" name="rating" required>
+            <option value="">Select a rating</option>
+            {% for i in ratings%}
+            <option value="{{ i }}" {% if form.rating.value == i %}selected{% endif %}>{{ i }}</option>
+            {% endfor %}
+        </select><br><br>
+        
+        
             <div class="form-group pt-4">
                 <button class="btn btn-outline-success" type="submit">Submit Review</button>
             </div>
         </form>
 
         <div class="pt-4">
-            <a href="{% url 'each_product' inventory.pk %}" class="btn btn-outline-primary">Back</a>
+            <a href="{% url 'each_product' inventory.id %}" class="btn btn-outline-primary">Back</a>
          </div>
 
     </div>

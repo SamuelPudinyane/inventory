@@ -14,7 +14,16 @@
                 <legend class="border-bottom pb-2 mb-4 text-center" style="padding-top: 2.0rem;">Testimonial Update Form</legend>
                 {% csrf_token %}
                 <div class="form-group">
-                    {{ form|crispy }}
+                    <label for="id_text">Text:</label><br>
+                 <textarea id="id_text" name="text" rows="4" cols="50" required></textarea><br><br>
+        
+                 <label for="id_rating">Rating:</label><br>
+                <select id="id_rating" name="rating" required>
+                <option value="">Select a rating</option>
+            {% for i in ratings%}
+            <option value="{{ i }}" {% if form.rating.value == i %}selected{% endif %}>{{ i }}</option>
+            {% endfor %}
+        </select><br><br>
                 </div>
                 <div class="form-group pt-4">
                     <button class="btn btn-outline-success" type="submit">Update</button>
@@ -26,5 +35,38 @@
 </div>
 <br>
 <br>
+<script>
+    async function fetchTestimonialData(pk) {
+       console.log("pk is "+pk)
+       
+        const url = `/update_testimonial/${pk}/`; // Django API endpoint
+        try {
+            const response = await fetch(url, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            });
+            console.log("response "+response.json())
+            if (response.ok) {
+                const data = await response.json();
+                console.log("data "+data.text); // Log the data for debugging
+                
+                // Populate the form with the fetched data
+                document.getElementById('id_text').value = data.text;
+                document.getElementById('id_rating').value = data.rating;
+            } else {
+                console.error('Failed to fetch testimonial data:', response.statusText);
+            }
+        } catch (error) {
+            console.error('Error fetching testimonial data:', error);
+        }
+    }
+
+    // Call the function with the primary key of the testimonial
+    const testimonialId = {{data.id}}; // Replace with the actual ID
+    fetchTestimonialData(testimonialId);
+</script>
+
 
 {% endblock %}

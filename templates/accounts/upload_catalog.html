@@ -12,13 +12,28 @@
             {% csrf_token %}
             <fieldset>
                 <legend class="border-bottom pb-2 mb-4 text-center" style="padding-top: 2.0rem;">Upload Catalog</legend>
-                {{ form|crispy }}
-                <div class="form-group pt-4">
-                    <button class="btn btn-outline-success" type="submit">Submit</button>
+                <div class="form-group">
+                    <label for="name">Catalog Name:</label>
+                    <input type="text" id="name" name="name" class="form-control" required>
                 </div>
+    
+                <div class="form-group">
+                    <label for="description">Description:</label>
+                    <textarea id="description" name="description" class="form-control" required></textarea>
+                </div>
+    
+                <div class="form-group">
+                    <label for="catalog_file">Upload Catalog File:</label>
+                    <input type="file" id="catalog_file" name="catalog_file" class="form-control-file" accept=".xlsx" required>
+                </div>
+    
+                <button type="submit" class="btn btn-primary">Create Catalog</button>
             </fieldset>
         </form>
     </div>
    </div>
 </div>
+<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.0.4/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 {% endblock %}

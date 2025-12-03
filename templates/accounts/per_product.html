@@ -9,14 +9,14 @@
    <div class="container mt-5">
     <div class="content-section">
         <div class="row mx-auto justify-content-center">
-
+           
             <div class="card m-4" style="width: 18rem;">
                 <div class="card-body">
                     <h5 class="card-title text-center">Product Name</h5>
                     <div style="font-size: 30px;" class="text-center">
                     <span><i class="fab fa-product-hunt"></i></span>
                 </div>
-                <h3 class="text-center">{{ inventory.name }}</h3>
+                <h3 class="text-center">{{ name }}</h3>
                 </div>
             </div>
 
@@ -27,7 +27,7 @@
                     <div style="font-size: 30px;" class="text-center">
                     <span><i class="fab fa-warehouse"></i></span>
                 </div>
-                <h3 class="text-center">{{ inventory.quantity_in_stock }}</h3>
+                <h3 class="text-center">{{ quantity_in_stock }}</h3>
                 </div>
             </div>
 
@@ -38,18 +38,18 @@
                     <div style="font-size: 30px;" class="text-center">
                     <span><i class="fas fa-warehouse"></i></span>
                 </div>
-                <h3 class="text-center">{{ inventory.quantity_sold }}</h3>
+                <h3 class="text-center">{{ quantity_sold }}</h3>
                 </div>
             </div>
 
 
             <div class="card m-4" style="width: 18rem;">
                 <div class="card-body">
-                    <h5 class="card-title text-center">Price Per {{ inventory.name }}</h5>
+                    <h5 class="card-title text-center">Price Per {{ name }}</h5>
                     <div style="font-size: 30px;" class="text-center">
                     <span><i class="far fa-money-bill-alt"></i></i></span>
                 </div>
-                <h3 class="text-center">R{{ inventory.cost_per_item }}</h3>
+                <h3 class="text-center">R{{ cost_per_item }}</h3>
                 </div>
             </div>
 
@@ -60,7 +60,7 @@
                     <div style="font-size: 30px;" class="text-center">
                     <span><i class="far fa-money-bill-alt"></i></span>
                 </div>
-                <h3 class="text-center">R{{ inventory.sales }}</h3>
+                <h3 class="text-center">R{{ sales }}</h3>
                 </div>
             </div>
 
@@ -71,7 +71,7 @@
                     <div style="font-size: 30px;" class="text-center">
                     <span><i class="fas fa-calendar-alt"></i></span>
                 </div>
-                <h3 class="text-center">{{ inventory.stock_date }}</h3>
+                <h3 class="text-center">{{ stock_date }}</h3>
                 </div>
             </div>
 
@@ -82,7 +82,7 @@
                     <div style="font-size: 30px;" class="text-center">
                     <span><i class="fas fa-calendar-alt"></i></span>
                 </div>
-                <h3 class="text-center">{{ inventory.last_sales_date }}</h3>
+                <h3 class="text-center">{{ last_sales_date }}</h3>
                 </div>
             </div>
 
@@ -92,13 +92,13 @@
                     <div style="font-size: 30px;" class="text-center">
                     <span><i class="fas fa-barcode"></i></i></span>
                 </div>
-                <h3 class="text-center">{{ inventory.barcode_data }}</h3>
+                <h3 class="text-center">{{ barcode_data }}</h3>
                 </div>
             </div>
             
 
-            <a href="{% if inventory.id %}{% url 'product_update' inventory.id %}{% endif %}" class="btn btn-outline-success btn-sm mb-2">Update</a>
-            <a href="{% if inventory.id %}{% url 'product_delete' inventory.id %}{% endif %}" class="btn btn-danger btn-sm mb-2">Delete</a>  
+            <a href="{% if id %}{% url 'product_update' id %}{% endif %}" class="btn btn-outline-success btn-sm mb-2">Update</a>
+            <a href="{% if id %}{% url 'product_delete' id %}{% endif %}" class="btn btn-danger btn-sm mb-2">Delete</a>  
             <a href="{% url 'inventory_list' %}" class="btn btn-primary btn-sm mb-2">Back</a>  
             
 

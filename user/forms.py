@@ -6,54 +6,17 @@ from phonenumber_field.formfields import PhoneNumberField
 from user.models import Profile
 
 
-class RegisterForm(UserCreationForm):
-    # fields we want to include and customize in our form
-    first_name = forms.CharField(max_length=100,
-                                 required=True,
-                                 widget=forms.TextInput(attrs={'placeholder': 'First Name',
-                                                               'class': 'form-control',
-                                                               }))
-    last_name = forms.CharField(max_length=100,
-                                required=True,
-                                widget=forms.TextInput(attrs={'placeholder': 'Last Name',
-                                                              'class': 'form-control',
-                                                              }))
-    username = forms.CharField(max_length=100,
-                               required=True,
-                               widget=forms.TextInput(attrs={'placeholder': 'Username',
-                                                             'class': 'form-control',
-                                                             }))
-    email = forms.EmailField(required=True,
-                             widget=forms.TextInput(attrs={'placeholder': 'Email',
-                                                           'class': 'form-control',
-                                                           }))
-    
-    password1 = forms.CharField(max_length=50,
-                                required=True,
-                                widget=forms.PasswordInput(attrs={'placeholder': 'Password',
-                                                                  'class': 'form-control',
-                                                                  'data-toggle': 'password',
-                                                                  'id': 'password',
-                                                                  }))
-    password2 = forms.CharField(max_length=50,
-                                required=True,
-                                widget=forms.PasswordInput(attrs={'placeholder': 'Confirm Password',
-                                                                  'class': 'form-control',
-                                                                  'data-toggle': 'password',
-                                                                  'id': 'password',
-                                                                  }))
+class RegisterForm(forms.ModelForm):
     ROLE_CHOICES = (
         ('admin', 'Admin'),
         ('customer', 'Customer'),
         ('supplier', 'Supplier'),
         ('distributor', 'Distributor'),
     )
-    role = forms.ChoiceField(choices=ROLE_CHOICES)
-
+    role = forms.ChoiceField(choices=ROLE_CHOICES,label="Select your role",widget=forms.Select(attrs={'class': 'form-control'}))
     class Meta:
         model = User
-        fields = ['first_name', 'last_name', 'username', 'email', 'role', 'password1', 'password2']
-
+        fields = []
 
 class LoginForm(AuthenticationForm):
     username = forms.CharField(max_length=100,
