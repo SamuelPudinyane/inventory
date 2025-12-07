@@ -41,11 +41,30 @@ from user.models import Profile
 from user.forms import RegisterForm
 import barcode
 from barcode.writer import ImageWriter
-from db_queries import (get_catalog_by_supplier,check_order_amount_exists,get_top_ratings,get_latest_testimonials,
-                        insert_catalog,insert_catalog_with_image,get_catalog_by_pk,get_inventory_by_supplier,get_low_stock_inventories,
-                        get_catalogs_by_supplier,get_inventories,insert_inventory,save_barcode_to_db,get_catalogs_by_id,get_inventories_by_id,
-                        get_testimonial_by_id,insert_testimonial,get_testimonial_by_its_id,update_testimonials,delete_testimonials,
-                        delete_inventory,get_inventory_by_name,get_inventory_by_supplierid)
+from db_queries import (
+    check_order_amount_exists,
+    get_top_ratings,
+    get_latest_testimonials,
+    insert_catalog,
+    insert_catalog_with_image,
+    get_catalog_by_pk,
+    get_inventory_by_supplier,
+    get_low_stock_inventories,
+    get_catalogs_by_supplier,
+    get_catalogs_by_id,
+    get_inventories,
+    get_inventories_by_id,
+    save_barcode_to_db,
+    insert_inventory,
+    get_testimonial_by_id,
+    insert_testimonial,
+    get_testimonial_by_its_id,
+    update_testimonials,
+    delete_testimonials,
+    delete_inventory,
+    get_inventory_by_name,
+    get_inventory_by_supplierid
+)
 logging.basicConfig(level=logging.INFO)
 
 LOW_QUANTITY = getattr(settings, 'LOW_QUANTITY', 5)
@@ -107,7 +126,7 @@ def index(request):
 
 def catalog_list(request):
     user=request.session['user']
-    catalogs = get_catalog_by_supplier(user['user_id']) #Catalog.objects.filter(supplier=user)
+    catalogs = get_catalogs_by_supplier(user['user_id']) #Catalog.objects.filter(supplier=user)
     return render(request, 'accounts/catalog_list.html', {'catalogs': catalogs})
 
 
