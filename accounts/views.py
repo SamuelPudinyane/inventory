@@ -41,7 +41,7 @@ from user.models import Profile
 from user.forms import RegisterForm
 import barcode
 from barcode.writer import ImageWriter
-from db_queries import (get_connection,get_catalog_by_supplier,check_order_amount_exists,get_top_ratings,get_latest_testimonials,
+from db_queries import (get_catalog_by_supplier,check_order_amount_exists,get_top_ratings,get_latest_testimonials,
                         insert_catalog,insert_catalog_with_image,get_catalog_by_pk,get_inventory_by_supplier,get_low_stock_inventories,
                         get_catalogs_by_supplier,get_inventories,insert_inventory,save_barcode_to_db,get_catalogs_by_id,get_inventories_by_id,
                         get_testimonial_by_id,insert_testimonial,get_testimonial_by_its_id,update_testimonials,delete_testimonials,
@@ -49,7 +49,6 @@ from db_queries import (get_connection,get_catalog_by_supplier,check_order_amoun
 logging.basicConfig(level=logging.INFO)
 
 LOW_QUANTITY = getattr(settings, 'LOW_QUANTITY', 5)
-get_connection()
 def index(request):
     user_param = request.GET.get('user')
     
