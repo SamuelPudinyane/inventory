@@ -31,8 +31,7 @@ def get_latest_testimonials():
 
 
 
-from accounts.models import Catalog, Testimonial
-from orders.models import Inventory
+from accounts.models import Catalog, Testimonial, Inventory
 
 def insert_catalog(name, description, supplier_id):
     """
